@@ -14,6 +14,15 @@ linters:
     - ineffassign  # Находит неиспользуемые присваивания переменных
     - staticcheck  # Набор проверок на баги, производительность и логику (включая gosimple)
     - bodyclose    # КРИТИЧЕСКИЙ High-Load линтер: проверяет, закрыл ли ты resp.Body!
+    - revive       # Добавляем для проверки комментариев
+    - godot        # Проверка точки в конце комментариев
+    - godox        # Поиск TODO/FIXME
+  settings:
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+          disabled: false
 
 # В v2 утилиты форматирования (goimports, gofmt) вынесены в отдельную секцию
 formatters:

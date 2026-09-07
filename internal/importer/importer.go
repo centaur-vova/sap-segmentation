@@ -22,6 +22,9 @@ const (
 
 	// errorChannelSize - размер буфера канала для ошибок
 	errorChannelSize = 1
+
+	// maxRetries - количество повторных попыток при ошибке запроса
+	maxRetries = 3
 )
 
 // ERPItem - элемент ответа от ERP системы
@@ -36,14 +39,18 @@ type APIResponse struct {
 	Items []ERPItem `json:"items"`
 }
 
+type segmentationUpserter interface {
+	UpsertBatch(segments []model.Segmentation) error
+}
+
 type Importer struct {
 	config *config.Config
 	logger *slog.Logger
-	model  *model.SegmentationModel
+	model  segmentationUpserter
 	client *http.Client
 }
 
-func NewImporter(cfg *config.Config, logger *slog.Logger, model *model.SegmentationModel) *Importer {
+func NewImporter(cfg *config.Config, logger *slog.Logger, model segmentationUpserter) *Importer {
 	client := &http.Client{
 		Timeout: time.Duration(cfg.ConnTimeout) * time.Second,
 		Transport: &http.Transport{
@@ -83,9 +90,11 @@ func (i *Importer) Run(ctx context.Context) error {
 
 	batchChan := make(chan []model.Segmentation, batchChannelSize)
 	errChan := make(chan error, errorChannelSize)
+	workerDone := make(chan struct{})
 
 	// Воркер для вставки в БД
 	go func() {
+		defer close(workerDone)
 		for segments := range batchChan {
 			if err := i.model.UpsertBatch(segments); err != nil {
 				select {
@@ -107,9 +116,11 @@ func (i *Importer) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			close(batchChan)
+			<-workerDone
 			return ctx.Err()
 		case err := <-errChan:
 			close(batchChan)
+			<-workerDone
 			return fmt.Errorf("database worker error: %w", err)
 		default:
 		}
@@ -118,7 +129,7 @@ func (i *Importer) Run(ctx context.Context) error {
 		i.logger.Info("Requesting ERP data", "endpoint", url, "offset", offset, "limit", batchSize)
 
 		fetchStart := time.Now()
-		data, err := i.fetchData(ctx, url)
+		data, err := i.fetchWithRetry(ctx, url, maxRetries)
 		fetchDuration := time.Since(fetchStart)
 
 		if err != nil {
@@ -128,6 +139,7 @@ func (i *Importer) Run(ctx context.Context) error {
 				"duration", fetchDuration.String(),
 			)
 			close(batchChan)
+			<-workerDone
 			return fmt.Errorf("failed to fetch data at offset %d: %w", offset, err)
 		}
 
@@ -146,6 +158,7 @@ func (i *Importer) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			close(batchChan)
+			<-workerDone
 			return ctx.Err()
 		case batchChan <- segments:
 		}
@@ -165,12 +178,14 @@ func (i *Importer) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			close(batchChan)
+			<-workerDone
 			return ctx.Err()
 		case <-time.After(interval):
 		}
 	}
 
 	close(batchChan)
+	<-workerDone
 
 	select {
 	case err := <-errChan:

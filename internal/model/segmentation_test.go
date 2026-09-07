@@ -50,3 +50,30 @@ func TestUpsertBatch(t *testing.T) {
 		t.Errorf("Failed to close mock DB: %v", err)
 	}
 }
+
+func TestBatchInsert(t *testing.T) {
+	mockDB, mock, _ := sqlmock.New()
+	sqlxDB := sqlx.NewDb(mockDB, "sqlmock")
+	model := NewSegmentationModel(sqlxDB)
+
+	segments := []Segmentation{
+		{AddressSapID: "SAP-001", AdrSegment: "SEG-1", SegmentID: 1001},
+		{AddressSapID: "SAP-002", AdrSegment: "SEG-2", SegmentID: 1002},
+	}
+
+	mock.ExpectExec("INSERT INTO segmentation").
+		WithArgs("SAP-001", "SEG-1", int64(1001), "SAP-002", "SEG-2", int64(1002)).
+		WillReturnResult(sqlmock.NewResult(2, 2))
+
+	if err := model.BatchInsert(segments); err != nil {
+		t.Errorf("BatchInsert failed: %v", err)
+	}
+}
+
+func TestBatchInsertEmpty(t *testing.T) {
+	model := NewSegmentationModel(nil)
+
+	if err := model.BatchInsert([]Segmentation{}); err != nil {
+		t.Errorf("BatchInsert with empty slice should return nil, got %v", err)
+	}
+}

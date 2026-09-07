@@ -53,9 +53,7 @@ func NewLogger(cfg *config.Config) (*Logger, error) {
 	logger := slog.New(handler)
 
 	// Очистка старых логов
-	if err := cleanupOldLogs(cfg.LogDir, cfg.LogCleanupMaxAge, logger); err != nil {
-		logger.Warn("Failed to cleanup old logs", "error", err)
-	}
+	cleanupOldLogs(cfg.LogDir, cfg.LogCleanupMaxAge, logger)
 
 	return &Logger{
 		Logger: logger,
@@ -85,42 +83,34 @@ func parseLevel(level string) slog.Level {
 	}
 }
 
-func cleanupOldLogs(logDir string, maxAgeDays int, logger *slog.Logger) error {
+func cleanupOldLogs(logDir string, maxAgeDays int, logger *slog.Logger) {
 	files, err := os.ReadDir(logDir)
 	if err != nil {
-		return fmt.Errorf("failed to read log directory: %w", err)
+		return
 	}
 
 	cutoff := time.Now().AddDate(0, 0, -maxAgeDays)
 
 	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		// Удаляем только .log файлы
-		if filepath.Ext(file.Name()) != ".log" {
+		if file.IsDir() || filepath.Ext(file.Name()) != ".log" {
 			continue
 		}
 
 		filePath := filepath.Join(logDir, file.Name())
 		fileInfo, err := file.Info()
 		if err != nil {
-			logger.Error("Failed to get file info", "file", file.Name(), "error", err)
 			continue
 		}
 
-		if fileInfo.ModTime().Before(cutoff) {
-			if err := os.Remove(filePath); err != nil {
-				logger.Error("Failed to delete old log file", "file", file.Name(), "error", err)
-			} else {
-				logger.Info("Removed old log file",
-					"file", file.Name(),
-					"modified", fileInfo.ModTime().Format(time.RFC3339),
-				)
-			}
+		// Не удаляем файлы моложе cutoff
+		if fileInfo.ModTime().After(cutoff) {
+			continue
+		}
+
+		if err := os.Remove(filePath); err != nil {
+			logger.Error("Failed to delete old log file", "file", file.Name(), "error", err)
+		} else {
+			logger.Info("Removed old log file", "file", file.Name(), "modified", fileInfo.ModTime().Format(time.RFC3339))
 		}
 	}
-
-	return nil
 }
