@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sap_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mesh_group}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./setup/install.sql:/docker-entrypoint-initdb.d/01-install.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-mesh_group}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sap_network
+
+  mock_erp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    container_name: sap_mock_erp
+    networks:
+      - sap_network
+
+  sap_segmentation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sap_segmentation_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock_erp:
+        condition: service_started
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-mesh_group}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+
+      CONN_URI: http://mock_erp:8090/ords/bsm/segmentation/get_segmentation
+      CONN_AUTH_LOGIN_PWD: ${CONN_AUTH_LOGIN_PWD:-4Dfddf5:jKlljHGH}
+      CONN_USER_AGENT: ${CONN_USER_AGENT:-spacecount-test}
+      CONN_TIMEOUT: ${CONN_TIMEOUT:-10}
+      CONN_INTERVAL: ${CONN_INTERVAL:-100}
+
+      IMPORT_BATCH_SIZE: ${IMPORT_BATCH_SIZE:-50}
+      LOG_CLEANUP_MAX_AGE: ${LOG_CLEANUP_MAX_AGE:-7}
+
+      LOG_DIR: /log
+      LOG_FILE: segmentation_import.log
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+    volumes:
+      - ./log:/log
+    networks:
+      - sap_network
+    restart: "no"
+
+volumes:
+  postgres_data:
+
+networks:
+  sap_network:
+    driver: bridge

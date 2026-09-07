@@ -1,0 +1,21 @@
+# Dockerfile.mock
+FROM golang:1.26.0-alpine3.23 AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/mock_erp/ ./cmd/mock_erp/
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o mock-server ./cmd/mock_erp
+
+FROM alpine:3.23
+
+WORKDIR /app
+
+COPY --from=builder /app/mock-server .
+
+EXPOSE 8090
+
+CMD ["./mock-server"]

@@ -1,0 +1,27 @@
+# Обязательное поле для версии v2.5.0+
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  # В v2 свойство "disable-all: true" заменено на "default: none"
+  default: none
+  enable:
+    - errcheck     # Проверяет, что все возвращаемые ошибки обработаны
+    - govet        # Стандартный анализатор кода от команды Go
+    - ineffassign  # Находит неиспользуемые присваивания переменных
+    - staticcheck  # Набор проверок на баги, производительность и логику (включая gosimple)
+    - bodyclose    # КРИТИЧЕСКИЙ High-Load линтер: проверяет, закрыл ли ты resp.Body!
+
+# В v2 утилиты форматирования (goimports, gofmt) вынесены в отдельную секцию
+formatters:
+  enable:
+    - goimports    # Следит за правильным форматированием и порядком импортов
+
+issues:
+  # В v2 свойство "exclude-use-default" переехало в "linters.exclusions.presets"
+  # Если хочешь оставить дефолтные исключения, используется новая структура.
+  # Для тестового проще всего оставить правила пустыми, чтобы линтер проверял всё строго.
+  uniq-by-line: true
