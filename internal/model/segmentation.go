@@ -26,13 +26,32 @@ func NewSegmentationModel(db *sqlx.DB) *SegmentationModel {
 	return &SegmentationModel{DB: db}
 }
 
-// BatchInsert для массовой вставки.
-func (m *SegmentationModel) BatchInsert(segments []Segmentation) error {
+// UpsertBatch - пакетная вставка с деградацией до поштучной при ошибке (Batch Degradation).
+func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
 	if len(segments) == 0 {
 		return nil
 	}
 
-	// Создаем batch insert
+	// 1. Пробуем быстрый batch insert
+	err := m.batchInsert(segments)
+	if err == nil {
+		return nil
+	}
+
+	// 2. Деградация: вставляем по одной
+	for _, segment := range segments {
+		if err := m.singleUpsert(segment); err != nil {
+			// Логируем ошибку, но продолжаем с другими записями
+			fmt.Printf("Warning: failed to upsert single row (SAP ID: %s): %v\n", segment.AddressSapID, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+// batchInsert - массовая вставка одним запросом.
+func (m *SegmentationModel) batchInsert(segments []Segmentation) error {
 	valueStrings := make([]string, 0, len(segments))
 	valueArgs := make([]interface{}, 0, len(segments)*3)
 
@@ -54,12 +73,8 @@ func (m *SegmentationModel) BatchInsert(segments []Segmentation) error {
 	return err
 }
 
-// UpsertBatch - для одиночных вставок с транзакцией.
-func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
-	if len(segments) == 0 {
-		return nil
-	}
-
+// singleUpsert - вставка одной записи.
+func (m *SegmentationModel) singleUpsert(segment Segmentation) error {
 	query := `
         INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
         VALUES (:address_sap_id, :adr_segment, :segment_id)
@@ -69,24 +84,6 @@ func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
             segment_id = EXCLUDED.segment_id
     `
 
-	tx, err := m.DB.Beginx()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		// Rollback после Commit вернет ошибку sql.ErrTxDone - это нормально
-		_ = tx.Rollback()
-	}()
-
-	for _, segment := range segments {
-		if _, err := tx.NamedExec(query, segment); err != nil {
-			return err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := m.DB.NamedExec(query, segment)
+	return err
 }
