@@ -1,4 +1,3 @@
-// internal/model/segmentation_test.go
 package model
 
 import (

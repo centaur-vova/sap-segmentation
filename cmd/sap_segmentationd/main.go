@@ -1,4 +1,3 @@
-// cmd/sap_segmentationd/main.go
 package main
 
 import (

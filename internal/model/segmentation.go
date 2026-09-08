@@ -1,4 +1,3 @@
-// internal/model/segmentation.go
 package model
 
 import (

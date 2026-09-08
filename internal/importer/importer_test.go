@@ -1,4 +1,3 @@
-// internal/importer/importer_test.go
 package importer
 
 import (
