@@ -123,7 +123,7 @@ docker run --rm \
     -e LOG_FILE="segmentation_import.log" \
     -e LOG_TO_FILE="true" \
     -e LOG_TO_CONSOLE="true" \
-    -v $(pwd)/logs:/log \
+    -v $(pwd)/log:/log \
  ghcr.io/centaur-vova/sap-segmentation:latest
 ```
 
