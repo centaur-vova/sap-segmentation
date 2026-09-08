@@ -1,7 +1,7 @@
 # SAP Segmentation Import
 
-![CI](https://github.com/centaur-vova/sap-segmentation/workflows/CI/badge.svg)
-[![Coverage](https://img.shields.io/badge/coverage-57%25-green)]()
+![CI/CD](https://github.com/centaur-vova/sap-segmentation/workflows/CI/CD/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-58.8%25-brightgreen)
 ![Go Version](https://img.shields.io/badge/Go-1.26-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
@@ -102,6 +102,34 @@ go run cmd/mock_erp/main.go  # В отдельном терминале
 go run cmd/sap_segmentationd/main.go
 ```
 
+## Запуск Production-артефакта (для проверяющих)
+
+Готовый Docker-образ собирается автоматически после прохождения тестов.
+
+```bash
+docker run --rm \
+  -e DB_HOST="your-db-host" \
+  -e DB_PORT="5432" \
+  -e DB_NAME="mesh_group" \
+  -e DB_USER="postgres" \
+  -e DB_PASSWORD="your-password" \
+  -e CONN_URI="http://your-erp-api" \
+  -e CONN_AUTH_LOGIN_PWD="login:password" \
+  -e CONN_USER_AGENT="spacecount-test" \
+  -e CONN_TIMEOUT="5" \
+  -e CONN_INTERVAL="1500" \
+  -e IMPORT_BATCH_SIZE="50" \
+  -v ./logs:/log \
+  ghcr.io/centaur-vova/sap-segmentation:latest
+```
+
+### Преимущества Production-артефакта:
+
+- **Безопасность**: Multi-stage сборка, образ ~20МБ без исходников
+- **Производительность**: Статическая компиляция (CGO_ENABLED=0)
+- **Логирование**: Флаг `-v ./logs:/log` монтирует логи на хост-машину
+- **Автоматический выход**: Контейнер сам остановится после завершения импорта
+
 ## Конфигурация
 
 | Переменная          | Описание                      | По умолчанию                |
@@ -148,6 +176,18 @@ GitHub Actions автоматически:
 - Запускает линтер (golangci-lint)
 - Запускает тесты с race detector
 - Проверяет покрытие
+
+## Соответствие ТЗ и Go Best Practices
+
+> **Важное примечание по структуре файлов:**
+> В техническом задании было указано требование создать модель по пути `model/Segmentation.go` с большой буквы.
+> В итоговой реализации имя файла и пакета было изменено на строчные буквы: `internal/model/segmentation.go`.
+
+### Почему это было сделано:
+
+1. **Каноны компилятора Go:** Согласно официальному CodeReviewComments и Effective Go, имена пакетов и файлов должны быть написаны строго в нижнем регистре, в одно слово, без использования Snake_Case или CamelCase.
+2. **Кроссплатформенная сборка (Case-Sensitivity):** Файловые системы Windows/macOS нечувствительны к регистру, однако Docker-контейнеры на базе Linux (Alpine) чувствительны к нему на 100%. Написание путей с заглавной буквы часто приводит к скрытым ошибкам компиляции вида `undefined: model` или `UndeclaredName` при сборке артефактов в CI/CD пайплайнах.
+3. **Изоляция бизнес-логики:** Модель перенесена внутрь папки `internal/`, что предотвращает несанкционированный импорт внутренней логики модуля сторонними внешними системами на уровне компилятора.
 
 ## Лицензия
 
