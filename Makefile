@@ -72,11 +72,9 @@ db-shell: ## Подключиться к БД
 db-count: ## Количество записей
 	docker exec -it $(POSTGRES_NAME) psql -U postgres -d mesh_group -c "SELECT COUNT(*) FROM segmentation;"
 
-.PHONY: db-reset
-db-reset: ## Сбросить БД
-	$(DOCKER_COMPOSE) down -v
-	$(DOCKER_COMPOSE) up -d postgres
-	@sleep 10
+.PHONY: db-truncate
+db-truncate: ## Очистить таблицу segmentation
+	docker exec -it $(POSTGRES_NAME) psql -U postgres -d mesh_group -c "TRUNCATE TABLE segmentation RESTART IDENTITY;"
 
 # ============================================
 # Тестирование

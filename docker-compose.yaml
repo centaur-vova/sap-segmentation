@@ -24,6 +24,8 @@ services:
       context: .
       dockerfile: Dockerfile.mock
     container_name: sap_mock_erp
+    ports:
+      - "8090:8090"
     networks:
       - sap_network
 

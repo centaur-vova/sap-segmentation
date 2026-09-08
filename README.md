@@ -1,7 +1,7 @@
 # SAP Segmentation Import
 
 ![CI/CD](https://github.com/centaur-vova/sap-segmentation/workflows/CI/CD/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-58.8%25-brightgreen)
+[![Coverage](https://img.shields.io/badge/coverage-58.8%25-brightgreen)](https://github.com/centaur-vova/sap-segmentation/actions)
 ![Go Version](https://img.shields.io/badge/Go-1.26-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
@@ -102,25 +102,29 @@ go run cmd/mock_erp/main.go  # В отдельном терминале
 go run cmd/sap_segmentationd/main.go
 ```
 
-## Запуск Production-артефакта (для проверяющих)
+## Запуск Production-артефакта
 
 Готовый Docker-образ собирается автоматически после прохождения тестов.
 
 ```bash
 docker run --rm \
-  -e DB_HOST="your-db-host" \
-  -e DB_PORT="5432" \
-  -e DB_NAME="mesh_group" \
-  -e DB_USER="postgres" \
-  -e DB_PASSWORD="your-password" \
-  -e CONN_URI="http://your-erp-api" \
-  -e CONN_AUTH_LOGIN_PWD="login:password" \
-  -e CONN_USER_AGENT="spacecount-test" \
-  -e CONN_TIMEOUT="5" \
-  -e CONN_INTERVAL="1500" \
-  -e IMPORT_BATCH_SIZE="50" \
-  -v ./logs:/log \
-  ghcr.io/centaur-vova/sap-segmentation:latest
+    -e DB_HOST="your-db-host" \
+    -e DB_PORT="5432" \
+    -e DB_NAME="mesh_group" \
+    -e DB_USER="postgres" \
+    -e DB_PASSWORD="your-password" \
+    -e CONN_URI="http://your-erp-api" \
+    -e CONN_AUTH_LOGIN_PWD="login:password" \
+    -e CONN_USER_AGENT="spacecount-test" \
+    -e CONN_TIMEOUT="5" \
+    -e CONN_INTERVAL="1500" \
+    -e IMPORT_BATCH_SIZE="50" \
+    -e LOG_DIR="/log" \
+    -e LOG_FILE="segmentation_import.log" \
+    -e LOG_TO_FILE="true" \
+    -e LOG_TO_CONSOLE="true" \
+    -v $(pwd)/logs:/log \
+ ghcr.io/centaur-vova/sap-segmentation:latest
 ```
 
 ### Преимущества Production-артефакта:
@@ -156,7 +160,7 @@ docker run --rm \
 Логи пишутся в:
 
 - **Консоль** — `stdout` (для Docker)
-- **Файл** — `log/segmentation_import.log`
+- **Файл** — `/log/segmentation_import.log` (в контейнере)
 
 Формат: JSON или Text (настраивается через `LOG_FORMAT`).
 
@@ -176,6 +180,7 @@ GitHub Actions автоматически:
 - Запускает линтер (golangci-lint)
 - Запускает тесты с race detector
 - Проверяет покрытие
+- Собирает и публикует Docker образ в GHCR
 
 ## Соответствие ТЗ и Go Best Practices
 
