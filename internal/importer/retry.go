@@ -10,7 +10,7 @@ import (
 func (i *Importer) fetchWithRetry(ctx context.Context, url string, maxRetries int) (*APIResponse, error) {
 	var lastErr error
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		data, err := i.fetchData(ctx, url)
 		if err == nil {
 			return data, nil
@@ -19,7 +19,7 @@ func (i *Importer) fetchWithRetry(ctx context.Context, url string, maxRetries in
 		lastErr = err
 
 		// Exponential backoff
-		backoff := time.Duration(1<<uint(attempt)) * time.Second
+		backoff := time.Duration(1<<uint(attempt)) * 100 * time.Millisecond
 
 		i.logger.Warn("Request failed, retrying",
 			"attempt", attempt+1,
