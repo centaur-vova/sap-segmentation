@@ -12,11 +12,13 @@ import (
 	"github.com/centaur-vova/sap-segmentation/internal/config"
 )
 
+// Logger - обертка над slog.Logger с поддержкой записи в файл.
 type Logger struct {
 	*slog.Logger
 	file *os.File
 }
 
+// NewLogger - создает логгер с выводом в консоль и файл.
 func NewLogger(cfg *config.Config) (*Logger, error) {
 	// Создаем директорию для логов
 	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
@@ -61,6 +63,7 @@ func NewLogger(cfg *config.Config) (*Logger, error) {
 	}, nil
 }
 
+// Close - закрывает файл лога.
 func (l *Logger) Close() error {
 	if l.file != nil {
 		return l.file.Close()

@@ -1,14 +1,10 @@
 package config
 
 import (
-	"os"
 	"testing"
 )
 
 func TestLoad(t *testing.T) {
-	// Очищаем env
-	os.Clearenv()
-
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
@@ -26,10 +22,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadWithEnv(t *testing.T) {
 	// Устанавливаем переменные
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", "5433")
-	defer os.Unsetenv("DB_HOST")
-	defer os.Unsetenv("DB_PORT")
+	t.Setenv("DB_HOST", "localhost")
+	t.Setenv("DB_PORT", "5433")
 
 	cfg, err := Load()
 	if err != nil {

@@ -17,24 +17,24 @@ import (
 )
 
 const (
-	// batchChannelSize - размер буфера канала для батчей
+	// batchChannelSize - размер буфера канала для батчей.
 	batchChannelSize = 5
 
-	// errorChannelSize - размер буфера канала для ошибок
+	// errorChannelSize - размер буфера канала для ошибок.
 	errorChannelSize = 1
 
-	// maxRetries - количество повторных попыток при ошибке запроса
+	// maxRetries - количество повторных попыток при ошибке запроса.
 	maxRetries = 3
 )
 
-// ERPItem - элемент ответа от ERP системы
+// ERPItem - элемент ответа от ERP системы.
 type ERPItem struct {
 	AddressSapID string `json:"address_sap_id"`
 	AdrSegment   string `json:"adr_segment"`
 	SegmentID    int64  `json:"segment_id"`
 }
 
-// APIResponse - ответ от ERP системы
+// APIResponse - ответ от ERP системы.
 type APIResponse struct {
 	Items []ERPItem `json:"items"`
 }
@@ -43,6 +43,7 @@ type segmentationUpserter interface {
 	UpsertBatch(segments []model.Segmentation) error
 }
 
+// Importer - импортер данных из ERP системы.
 type Importer struct {
 	config *config.Config
 	logger *slog.Logger
@@ -50,6 +51,7 @@ type Importer struct {
 	client *http.Client
 }
 
+// NewImporter - создает новый экземпляр импортера.
 func NewImporter(cfg *config.Config, logger *slog.Logger, model segmentationUpserter) *Importer {
 	client := &http.Client{
 		Timeout: time.Duration(cfg.ConnTimeout) * time.Second,
@@ -85,6 +87,7 @@ func NewImporter(cfg *config.Config, logger *slog.Logger, model segmentationUpse
 	}
 }
 
+// Run - запускает процесс импорта данных.
 func (i *Importer) Run(ctx context.Context) error {
 	i.logger.Info("Starting SAP segmentation import process")
 

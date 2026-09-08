@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Segmentation - структура для таблицы segmentation
+// Segmentation - структура для таблицы segmentation.
 type Segmentation struct {
 	ID           int64  `db:"id"`
 	AddressSapID string `db:"address_sap_id"`
@@ -16,15 +16,17 @@ type Segmentation struct {
 	SegmentID    int64  `db:"segment_id"`
 }
 
+// SegmentationModel - модель для работы с таблицей segmentation.
 type SegmentationModel struct {
 	DB *sqlx.DB
 }
 
+// NewSegmentationModel - создает новый экземпляр SegmentationModel.
 func NewSegmentationModel(db *sqlx.DB) *SegmentationModel {
 	return &SegmentationModel{DB: db}
 }
 
-// BatchInsert для массовой вставки
+// BatchInsert для массовой вставки.
 func (m *SegmentationModel) BatchInsert(segments []Segmentation) error {
 	if len(segments) == 0 {
 		return nil
@@ -52,7 +54,7 @@ func (m *SegmentationModel) BatchInsert(segments []Segmentation) error {
 	return err
 }
 
-// UpsertBatch - для одиночных вставок с транзакцией
+// UpsertBatch - для одиночных вставок с транзакцией.
 func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
 	if len(segments) == 0 {
 		return nil

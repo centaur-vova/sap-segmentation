@@ -60,12 +60,16 @@ func TestRunWithData(t *testing.T) {
 		// Первый вызов - данные, второй - пусто
 		if callCount == 1 {
 			response := `{"items": [
-				{"address_sap_id": "SAP-001", "adr_segment": "SEG-1", "segment_id": 1001},
-				{"address_sap_id": "SAP-002", "adr_segment": "SEG-2", "segment_id": 1002}
-			]}`
-			w.Write([]byte(response))
+        		{"address_sap_id": "SAP-001", "adr_segment": "SEG-1", "segment_id": 1001},
+        		{"address_sap_id": "SAP-002", "adr_segment": "SEG-2", "segment_id": 1002}
+    		]}`
+			if _, err := w.Write([]byte(response)); err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
 		} else {
-			w.Write([]byte(`{"items": []}`))
+			if _, err := w.Write([]byte(`{"items": []}`)); err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
 		}
 	}))
 	defer ts.Close()

@@ -6,6 +6,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// Config - конфигурация приложения.
 type Config struct {
 	// Database settings
 	DBHost     string `envconfig:"DB_HOST" default:"127.0.0.1"`
@@ -34,6 +35,7 @@ type Config struct {
 	LogFormat    string `envconfig:"LOG_FORMAT" default:"json"` // json or text
 }
 
+// Load - загружает конфигурацию из переменных окружения.
 func Load() (*Config, error) {
 	var cfg Config
 	if err := envconfig.Process("", &cfg); err != nil {
@@ -42,12 +44,13 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
+// GetDBConnectionString - формирует строку подключения к PostgreSQL.
 func (c *Config) GetDBConnectionString() string {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.DBHost, c.DBPort, c.DBUser, c.DBPassword, c.DBName)
 }
 
-// GetDSN возвращает DSN для подключения к PostgreSQL
+// GetDSN возвращает DSN для подключения к PostgreSQL.
 func (c *Config) GetDSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName)

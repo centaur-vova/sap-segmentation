@@ -1,3 +1,4 @@
+// internal/logger/logger_test.go
 package logger
 
 import (
@@ -27,12 +28,14 @@ func TestNewLogger(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger failed: %v", err)
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("Close failed: %v", err)
+		}
+	}()
 
-	// Пишем в лог
 	log.Info("test")
 
-	// Проверяем что файл существует после записи
 	logPath := filepath.Join(tmpDir, "test.log")
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
 		t.Error("Log file was not created")
@@ -55,9 +58,12 @@ func TestNewLoggerNoOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger failed: %v", err)
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("Close failed: %v", err)
+		}
+	}()
 
-	// Должен работать даже без выводов (stdout по умолчанию)
 	log.Info("test")
 }
 
@@ -77,7 +83,11 @@ func TestNewLoggerWithTextFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger failed: %v", err)
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("Close failed: %v", err)
+		}
+	}()
 
 	log.Debug("debug message")
 	log.Info("info message")
@@ -101,7 +111,11 @@ func TestNewLoggerWithConsoleOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger failed: %v", err)
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("Close failed: %v", err)
+		}
+	}()
 
 	log.Info("test with console")
 }
@@ -145,7 +159,6 @@ func TestCloseWithoutFile(t *testing.T) {
 		t.Fatalf("NewLogger failed: %v", err)
 	}
 
-	// Не должно быть ошибки при закрытии без файла
 	if err := log.Close(); err != nil {
 		t.Errorf("Close without file failed: %v", err)
 	}
@@ -181,15 +194,21 @@ func TestCleanupOldLogs(t *testing.T) {
 
 	// Создаем старый файл
 	oldFile := filepath.Join(tmpDir, "old.log")
-	os.WriteFile(oldFile, []byte("test"), 0644)
+	if err := os.WriteFile(oldFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create old file: %v", err)
+	}
 
 	// Устанавливаем время модификации 10 дней назад
 	oldTime := time.Now().AddDate(0, 0, -10)
-	os.Chtimes(oldFile, oldTime, oldTime)
+	if err := os.Chtimes(oldFile, oldTime, oldTime); err != nil {
+		t.Fatalf("Failed to change file time: %v", err)
+	}
 
 	// Создаем новый файл
 	newFile := filepath.Join(tmpDir, "new.log")
-	os.WriteFile(newFile, []byte("test"), 0644)
+	if err := os.WriteFile(newFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create new file: %v", err)
+	}
 
 	logger := slog.Default()
 	cleanupOldLogs(tmpDir, 7, logger)
@@ -217,11 +236,15 @@ func TestCleanupOldLogsNonLogFiles(t *testing.T) {
 
 	// Создаем не .log файл
 	txtFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(txtFile, []byte("test"), 0644)
+	if err := os.WriteFile(txtFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create txt file: %v", err)
+	}
 
 	// Устанавливаем старое время
 	oldTime := time.Now().AddDate(0, 0, -10)
-	os.Chtimes(txtFile, oldTime, oldTime)
+	if err := os.Chtimes(txtFile, oldTime, oldTime); err != nil {
+		t.Fatalf("Failed to change file time: %v", err)
+	}
 
 	logger := slog.Default()
 	cleanupOldLogs(tmpDir, 7, logger)
