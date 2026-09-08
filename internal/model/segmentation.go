@@ -2,6 +2,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -30,20 +31,20 @@ func NewSegmentationModel(db *sqlx.DB) *SegmentationModel {
 }
 
 // UpsertBatch - пакетная вставка с деградацией до поштучной при ошибке (Batch Degradation).
-func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
+func (m *SegmentationModel) UpsertBatch(ctx context.Context, segments []Segmentation) error {
 	if len(segments) == 0 {
 		return nil
 	}
 
 	// 1. Пробуем быстрый batch insert
-	err := m.batchInsert(segments)
+	err := m.batchInsert(ctx, segments)
 	if err == nil {
 		return nil
 	}
 
 	// 2. Деградация: вставляем по одной
 	for _, segment := range segments {
-		if err := m.singleUpsert(segment); err != nil {
+		if err := m.singleUpsert(ctx, segment); err != nil {
 			// Логируем ошибку, но продолжаем с другими записями
 			fmt.Printf("Warning: failed to upsert single row (SAP ID: %s): %v\n", segment.AddressSapID, err)
 			continue
@@ -54,9 +55,9 @@ func (m *SegmentationModel) UpsertBatch(segments []Segmentation) error {
 }
 
 // batchInsert - массовая вставка одним запросом.
-func (m *SegmentationModel) batchInsert(segments []Segmentation) error {
+func (m *SegmentationModel) batchInsert(ctx context.Context, segments []Segmentation) error {
 	valueStrings := make([]string, 0, len(segments))
-	valueArgs := make([]interface{}, 0, len(segments)*3)
+	valueArgs := make([]any, 0, len(segments)*3)
 
 	for i, seg := range segments {
 		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
@@ -64,31 +65,31 @@ func (m *SegmentationModel) batchInsert(segments []Segmentation) error {
 	}
 
 	query := fmt.Sprintf(`
-    	INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
-    	VALUES %s
-    	ON CONFLICT (address_sap_id)
-    	DO UPDATE SET
-	        adr_segment = EXCLUDED.adr_segment,
-        	segment_id = EXCLUDED.segment_id,
-	        updated_at = NOW()
-		`, strings.Join(valueStrings, ","))
+        INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
+        VALUES %s
+        ON CONFLICT (address_sap_id)
+        DO UPDATE SET
+            adr_segment = EXCLUDED.adr_segment,
+            segment_id = EXCLUDED.segment_id,
+            updated_at = NOW()
+    `, strings.Join(valueStrings, ","))
 
-	_, err := m.DB.Exec(query, valueArgs...)
+	_, err := m.DB.ExecContext(ctx, query, valueArgs...)
 	return err
 }
 
 // singleUpsert - вставка одной записи.
-func (m *SegmentationModel) singleUpsert(segment Segmentation) error {
+func (m *SegmentationModel) singleUpsert(ctx context.Context, segment Segmentation) error {
 	query := `
-    	INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
-    	VALUES (:address_sap_id, :adr_segment, :segment_id)
-    	ON CONFLICT (address_sap_id)
-    	DO UPDATE SET
-        	adr_segment = EXCLUDED.adr_segment,
-	        segment_id = EXCLUDED.segment_id,
-    	    updated_at = NOW()
-	`
+        INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (address_sap_id)
+        DO UPDATE SET
+            adr_segment = EXCLUDED.adr_segment,
+            segment_id = EXCLUDED.segment_id,
+            updated_at = NOW()
+    `
 
-	_, err := m.DB.NamedExec(query, segment)
+	_, err := m.DB.ExecContext(ctx, query, segment.AddressSapID, segment.AdrSegment, segment.SegmentID)
 	return err
 }

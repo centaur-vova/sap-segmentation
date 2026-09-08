@@ -40,7 +40,7 @@ type APIResponse struct {
 }
 
 type segmentationUpserter interface {
-	UpsertBatch(segments []model.Segmentation) error
+	UpsertBatch(ctx context.Context, segments []model.Segmentation) error
 }
 
 // Importer - импортер данных из ERP системы.
@@ -99,7 +99,7 @@ func (i *Importer) Run(ctx context.Context) error {
 	go func() {
 		defer close(workerDone)
 		for segments := range batchChan {
-			if err := i.model.UpsertBatch(segments); err != nil {
+			if err := i.model.UpsertBatch(ctx, segments); err != nil {
 				select {
 				case errChan <- err:
 				default:

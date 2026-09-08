@@ -2,6 +2,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestUpsertBatchSuccess(t *testing.T) {
 		WithArgs("SAP-001", "SEG-1", int64(1001), "SAP-002", "SEG-2", int64(1002)).
 		WillReturnResult(sqlmock.NewResult(2, 2))
 
-	err = model.UpsertBatch(segments)
+	err = model.UpsertBatch(context.Background(), segments)
 	if err != nil {
 		t.Errorf("UpsertBatch failed: %v", err)
 	}
@@ -77,7 +78,7 @@ func TestUpsertBatchDegradation(t *testing.T) {
 		WithArgs("SAP-002", "SEG-2", int64(1002)).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = model.UpsertBatch(segments)
+	err = model.UpsertBatch(context.Background(), segments)
 	if err != nil {
 		t.Errorf("UpsertBatch should not fail on degradation: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestUpsertBatchDegradationWithBadRow(t *testing.T) {
 		WithArgs("SAP-003", "SEG-3", int64(1003)).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = model.UpsertBatch(segments)
+	err = model.UpsertBatch(context.Background(), segments)
 	if err != nil {
 		t.Errorf("UpsertBatch should not fail even with bad row: %v", err)
 	}
@@ -141,7 +142,7 @@ func TestUpsertBatchDegradationWithBadRow(t *testing.T) {
 func TestUpsertBatchEmpty(t *testing.T) {
 	model := NewSegmentationModel(nil)
 
-	err := model.UpsertBatch([]Segmentation{})
+	err := model.UpsertBatch(context.Background(), []Segmentation{})
 	if err != nil {
 		t.Errorf("UpsertBatch with empty slice should return nil, got %v", err)
 	}

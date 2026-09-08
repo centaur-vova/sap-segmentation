@@ -146,4 +146,4 @@ import: ## Запустить импорт заново
 	$(DOCKER_COMPOSE) run --rm $(APP_NAME)
 
 .PHONY: reimport
-reimport: db-clean import ## Очистить БД и запустить импорт заново
+reimport: db-truncate import ## Очистить БД и запустить импорт заново

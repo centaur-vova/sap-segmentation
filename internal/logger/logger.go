@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/centaur-vova/sap-segmentation/internal/config"
@@ -19,22 +20,39 @@ type Logger struct {
 }
 
 // NewLogger - создает логгер с выводом в консоль и файл.
+// NewLogger - создает логгер с выводом в консоль и файл.
 func NewLogger(cfg *config.Config) (*Logger, error) {
-	// Создаем директорию для логов
-	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create log dir: %w", err)
+	var writers []io.Writer
+	var file *os.File
+
+	if cfg.LogToConsole {
+		writers = append(writers, os.Stdout)
 	}
 
-	logPath := filepath.Join(cfg.LogDir, cfg.LogFile)
+	if cfg.LogToFile {
+		// Создаем директорию для логов
+		if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create log dir: %w", err)
+		}
 
-	// Открываем файл для логирования
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log file: %w", err)
+		logPath := filepath.Join(cfg.LogDir, cfg.LogFile)
+
+		// Открываем файл для логирования
+		file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open log file: %w", err)
+		}
+
+		writers = append(writers, file)
 	}
 
-	// Мультиплексируем вывод: консоль + файл
-	multiWriter := io.MultiWriter(os.Stdout, file)
+	// Если ни один вывод не настроен - используем stdout
+	if len(writers) == 0 {
+		writers = append(writers, os.Stdout)
+	}
+
+	// Мультиплексируем вывод
+	multiWriter := io.MultiWriter(writers...)
 
 	// Настраиваем уровень логирования
 	level := parseLevel(cfg.LogLevel)
@@ -55,7 +73,9 @@ func NewLogger(cfg *config.Config) (*Logger, error) {
 	logger := slog.New(handler)
 
 	// Очистка старых логов
-	cleanupOldLogs(cfg.LogDir, cfg.LogCleanupMaxAge, logger)
+	if err := cleanupOldLogs(cfg.LogDir, cfg.LogCleanupMaxAge, logger); err != nil {
+		logger.Error("Failed to cleanup old logs on startup", "error", err)
+	}
 
 	return &Logger{
 		Logger: logger,
@@ -72,7 +92,7 @@ func (l *Logger) Close() error {
 }
 
 func parseLevel(level string) slog.Level {
-	switch level {
+	switch strings.ToLower(level) {
 	case "debug":
 		return slog.LevelDebug
 	case "info":
@@ -86,10 +106,10 @@ func parseLevel(level string) slog.Level {
 	}
 }
 
-func cleanupOldLogs(logDir string, maxAgeDays int, logger *slog.Logger) {
+func cleanupOldLogs(logDir string, maxAgeDays int, logger *slog.Logger) error {
 	files, err := os.ReadDir(logDir)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to read log dir: %w", err)
 	}
 
 	cutoff := time.Now().AddDate(0, 0, -maxAgeDays)
@@ -116,4 +136,6 @@ func cleanupOldLogs(logDir string, maxAgeDays int, logger *slog.Logger) {
 			logger.Info("Removed old log file", "file", file.Name(), "modified", fileInfo.ModTime().Format(time.RFC3339))
 		}
 	}
+
+	return nil
 }

@@ -21,7 +21,7 @@ type MockModel struct {
 	upsertFunc func(segments []model.Segmentation) error
 }
 
-func (m *MockModel) UpsertBatch(segments []model.Segmentation) error {
+func (m *MockModel) UpsertBatch(ctx context.Context, segments []model.Segmentation) error {
 	if m.upsertFunc != nil {
 		return m.upsertFunc(segments)
 	}

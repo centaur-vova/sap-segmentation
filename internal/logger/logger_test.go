@@ -176,7 +176,10 @@ func TestParseLevel(t *testing.T) {
 		{"error", "error", slog.LevelError},
 		{"invalid", "invalid", slog.LevelInfo},
 		{"empty", "", slog.LevelInfo},
-		{"uppercase", "INFO", slog.LevelInfo},
+		{"uppercase_debug", "DEBUG", slog.LevelDebug},
+		{"uppercase_info", "INFO", slog.LevelInfo},
+		{"uppercase_warn", "WARN", slog.LevelWarn},
+		{"uppercase_error", "ERROR", slog.LevelError},
 	}
 
 	for _, tt := range tests {
@@ -211,7 +214,9 @@ func TestCleanupOldLogs(t *testing.T) {
 	}
 
 	logger := slog.Default()
-	cleanupOldLogs(tmpDir, 7, logger)
+	if err := cleanupOldLogs(tmpDir, 7, logger); err != nil {
+		t.Errorf("cleanupOldLogs failed: %v", err)
+	}
 
 	// Старый файл должен быть удален
 	if _, err := os.Stat(oldFile); !os.IsNotExist(err) {
@@ -228,7 +233,9 @@ func TestCleanupOldLogsNoDir(t *testing.T) {
 	logger := slog.Default()
 
 	// Несуществующая директория - не должно быть паники
-	cleanupOldLogs("/nonexistent/path", 7, logger)
+	if err := cleanupOldLogs("/nonexistent/path", 7, logger); err == nil {
+		t.Error("Expected error for nonexistent directory, got nil")
+	}
 }
 
 func TestCleanupOldLogsNonLogFiles(t *testing.T) {
@@ -247,7 +254,9 @@ func TestCleanupOldLogsNonLogFiles(t *testing.T) {
 	}
 
 	logger := slog.Default()
-	cleanupOldLogs(tmpDir, 7, logger)
+	if err := cleanupOldLogs(tmpDir, 7, logger); err != nil {
+		t.Errorf("cleanupOldLogs failed: %v", err)
+	}
 
 	// .txt файл не должен быть удален
 	if _, err := os.Stat(txtFile); os.IsNotExist(err) {
