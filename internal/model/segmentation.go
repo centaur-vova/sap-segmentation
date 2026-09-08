@@ -4,16 +4,19 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
 // Segmentation - структура для таблицы segmentation.
 type Segmentation struct {
-	ID           int64  `db:"id"`
-	AddressSapID string `db:"address_sap_id"`
-	AdrSegment   string `db:"adr_segment"`
-	SegmentID    int64  `db:"segment_id"`
+	ID           int64     `db:"id"`
+	AddressSapID string    `db:"address_sap_id"`
+	AdrSegment   string    `db:"adr_segment"`
+	SegmentID    int64     `db:"segment_id"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 // SegmentationModel - модель для работы с таблицей segmentation.
@@ -61,13 +64,14 @@ func (m *SegmentationModel) batchInsert(segments []Segmentation) error {
 	}
 
 	query := fmt.Sprintf(`
-        INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
-        VALUES %s
-        ON CONFLICT (address_sap_id)
-        DO UPDATE SET
-            adr_segment = EXCLUDED.adr_segment,
-            segment_id = EXCLUDED.segment_id
-    `, strings.Join(valueStrings, ","))
+    	INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
+    	VALUES %s
+    	ON CONFLICT (address_sap_id)
+    	DO UPDATE SET
+	        adr_segment = EXCLUDED.adr_segment,
+        	segment_id = EXCLUDED.segment_id,
+	        updated_at = NOW()
+		`, strings.Join(valueStrings, ","))
 
 	_, err := m.DB.Exec(query, valueArgs...)
 	return err
@@ -76,13 +80,14 @@ func (m *SegmentationModel) batchInsert(segments []Segmentation) error {
 // singleUpsert - вставка одной записи.
 func (m *SegmentationModel) singleUpsert(segment Segmentation) error {
 	query := `
-        INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
-        VALUES (:address_sap_id, :adr_segment, :segment_id)
-        ON CONFLICT (address_sap_id)
-        DO UPDATE SET
-            adr_segment = EXCLUDED.adr_segment,
-            segment_id = EXCLUDED.segment_id
-    `
+    	INSERT INTO segmentation (address_sap_id, adr_segment, segment_id)
+    	VALUES (:address_sap_id, :adr_segment, :segment_id)
+    	ON CONFLICT (address_sap_id)
+    	DO UPDATE SET
+        	adr_segment = EXCLUDED.adr_segment,
+	        segment_id = EXCLUDED.segment_id,
+    	    updated_at = NOW()
+	`
 
 	_, err := m.DB.NamedExec(query, segment)
 	return err
